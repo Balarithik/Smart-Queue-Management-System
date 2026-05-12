@@ -134,6 +134,16 @@ React routes:
 | `/queues/:publicId/dashboard` | Operator — live stats and **Call next** |
 | `/join/:publicId` | Public — join queue and poll status |
 
+### Notifications
+
+The **`notifications`** app provides an abstraction layer and queue integration hooks:
+
+- **[`notifications/services.py`](backend/notifications/services.py)** — `NotificationChannel` (abstract), placeholder **`EmailNotificationChannel`**, **`SmsNotificationChannel`**, **`PushNotificationChannel`**, **`NotificationOrchestrator`**, and **`NotificationContext`** / **`NotificationEvent`**.
+- **[`notifications/hooks.py`](backend/notifications/hooks.py)** — `notify_user_joined_queue`, `notify_user_became_active`, `notify_queue_closed` (call from other apps).
+- **Triggers**: **`join_queue`** schedules **`user_joined_queue`** on **`transaction.on_commit`**; **`QueueNextView`** calls **`user_became_active`** after a token is **`CALLED`**; **`Queue.is_active`** **True → False** schedules **`queue_closed`** via **[`notifications/signals.py`](backend/notifications/signals.py)** (also **`on_commit`**).
+
+Optional env vars for future **SendGrid** / **Twilio** / **FCM** wiring are in [`.env.example`](.env.example) and [`backend/config/settings/base.py`](backend/config/settings/base.py). Run **`python manage.py test notifications`**.
+
 ### Production build (frontend)
 
 Set `VITE_API_BASE_URL` to your deployed API origin (no trailing slash), then:
@@ -207,7 +217,7 @@ docker compose exec backend python manage.py createsuperuser
 - **accounts** — custom user model and JWT authentication.
 - **organizations** — tenant **`Organization`** model and REST API (`/api/organizations/`).
 - **queues** — **`Queue`** + **`QueueEntry`**, join/next APIs, QR generation (`qrcode`, `Pillow`).
-- **notifications** — outbound notifications (placeholder).
+- **notifications** — abstract notification layer ([`services.py`](backend/notifications/services.py)), integration hooks ([`hooks.py`](backend/notifications/hooks.py)), queue close signal ([`signals.py`](backend/notifications/signals.py)).
 - **reports** — reporting (placeholder).
 
 Apps **`notifications`** and **`reports`** still expose route stubs under `/api/<app>/` for future work.
@@ -217,7 +227,7 @@ Apps **`notifications`** and **`reports`** still expose route stubs under `/api/
 - **QR join URLs**: Set **`FRONTEND_ORIGIN`** so QR codes point at your SPA (same file as other env vars).
 - **CORS**: Configured via `django-cors-headers` and `CORS_ALLOWED_ORIGINS` (see [`backend/config/settings/base.py`](backend/config/settings/base.py)).
 - **Static files**: Development uses Django staticfiles storage; production uses **WhiteNoise** compressed manifests (see [`production.py`](backend/config/settings/production.py)).
-- **Logging**: Console logging with level `LOG_LEVEL` (default `INFO`).
+- **Logging**: Console logging with level `LOG_LEVEL` (default `INFO`). Django logs **`Forbidden`** (HTTP **403**) on the **`django.request`** logger at **WARNING** when the authenticated user’s **role** is not allowed for that path. The SPA re-syncs **`/api/accounts/me/`** when **`localStorage`** tokens change in **another tab** (`storage` event) and on **window focus** (debounced) so React **`user.role`** matches the active JWT and org-only routes are not mounted for a **USER** token.
 
 ## License
 

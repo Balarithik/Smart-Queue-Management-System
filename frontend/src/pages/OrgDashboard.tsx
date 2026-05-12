@@ -78,7 +78,13 @@ export function OrgDashboard() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      await Promise.resolve()
+      if (cancelled) return
       setLoadError(null)
+      if (!user || (user.role !== 'ORGANIZATION' && user.role !== 'ADMIN')) {
+        setLoading(false)
+        return
+      }
       try {
         const { data } = await apiClient.get<Organization>('/api/organizations/me/')
         if (!cancelled) {
@@ -99,13 +105,13 @@ export function OrgDashboard() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     if (!org) return
     let cancelled = false
-    setSecondaryError(null)
     ;(async () => {
+      setSecondaryError(null)
       try {
         const [qRes, sRes] = await Promise.all([
           apiClient.get<QueueRow[]>(`/api/organizations/${org.id}/queues/`),

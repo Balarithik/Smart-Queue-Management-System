@@ -1,35 +1,9 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { apiClient } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 
 export function Dashboard() {
   const { user, logout } = useAuth()
-  const [adminPing, setAdminPing] = useState<string | null>(null)
-  const [orgPing, setOrgPing] = useState<string | null>(null)
-
-  async function tryAdminPing() {
-    setAdminPing(null)
-    try {
-      const { data } = await apiClient.get<{ detail: string }>('/api/accounts/admin/ping/')
-      setAdminPing(`OK: ${data.detail}`)
-    } catch {
-      setAdminPing('Forbidden or error (requires ADMIN role).')
-    }
-  }
-
-  async function tryOrgPing() {
-    setOrgPing(null)
-    try {
-      const { data } = await apiClient.get<{ detail: string }>(
-        '/api/accounts/organization/ping/',
-      )
-      setOrgPing(`OK: ${data.detail}`)
-    } catch {
-      setOrgPing('Forbidden or error (requires ORGANIZATION or ADMIN).')
-    }
-  }
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
@@ -54,34 +28,14 @@ export function Dashboard() {
         </div>
       </div>
 
-      <section className="mt-10 space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-medium text-slate-900">Role checks</h2>
-        <p className="text-sm text-slate-600">
-          These call API routes protected by Django permissions. Expect <strong>403</strong> unless
-          your role matches.
+      <section className="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-medium text-slate-900">Account</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Role-gated API routes (organization dashboard, queue staff tools) are listed in the
+          project README. The dev server logs <code className="rounded bg-slate-100 px-1">Forbidden</code>{' '}
+          when a request uses a token whose role is not allowed for that path—usually from another
+          tab signing in as a different user while this tab still showed the old session.
         </p>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-            onClick={() => void tryAdminPing()}
-          >
-            Call admin ping
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-            onClick={() => void tryOrgPing()}
-          >
-            Call organization ping
-          </button>
-        </div>
-        {adminPing ? (
-          <p className="text-sm text-slate-700">
-            Admin route: {adminPing}
-          </p>
-        ) : null}
-        {orgPing ? <p className="text-sm text-slate-700">Organization route: {orgPing}</p> : null}
       </section>
     </div>
   )

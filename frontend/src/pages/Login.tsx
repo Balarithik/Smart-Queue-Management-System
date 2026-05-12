@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 
+import { postAuthDestination } from '../auth/postAuthRedirect'
 import { useAuth } from '../auth/useAuth'
 
 export function Login() {
@@ -14,7 +15,8 @@ export function Login() {
   const [submitting, setSubmitting] = useState(false)
 
   if (user) {
-    return <Navigate to={from} replace />
+    const dest = postAuthDestination(user.role, from, '/dashboard')
+    return <Navigate to={dest} replace />
   }
 
   async function handleSubmit(e: FormEvent) {

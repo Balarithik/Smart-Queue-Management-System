@@ -19,7 +19,7 @@ def join_queue(public_id) -> dict:
         new_token = queue.last_token_issued + 1
         queue.last_token_issued = new_token
         queue.save(update_fields=["last_token_issued"])
-        QueueEntry.objects.create(
+        entry = QueueEntry.objects.create(
             queue=queue,
             token=new_token,
             status=QueueEntry.Status.WAITING,
@@ -29,6 +29,14 @@ def join_queue(public_id) -> dict:
             status=QueueEntry.Status.WAITING,
             token__lt=new_token,
         ).count()
+
+        from notifications.hooks import notify_user_joined_queue
+
+        def _notify_join() -> None:
+            notify_user_joined_queue(queue, entry, waiting_ahead=ahead)
+
+        transaction.on_commit(_notify_join)
+
         return {
             "token": new_token,
             "waiting_ahead": ahead,

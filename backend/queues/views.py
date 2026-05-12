@@ -137,6 +137,10 @@ class QueueNextView(APIView):
                 queue=queue, status=QueueEntry.Status.WAITING
             ).count()
 
+        from notifications.hooks import notify_user_became_active
+
+        notify_user_became_active(queue, entry)
+
         return Response(
             {
                 "called_token": entry.token,
