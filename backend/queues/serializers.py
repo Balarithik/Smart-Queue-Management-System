@@ -17,6 +17,7 @@ class QueueStaffSerializer(serializers.ModelSerializer):
     """Serializer for staff-facing queue detail."""
 
     join_url = serializers.SerializerMethodField()
+    qr_image_url = serializers.SerializerMethodField()
     qr_png_base64 = serializers.SerializerMethodField()
 
     class Meta:
@@ -31,6 +32,7 @@ class QueueStaffSerializer(serializers.ModelSerializer):
             "last_token_issued",
             "created_at",
             "join_url",
+            "qr_image_url",
             "qr_png_base64",
         )
         read_only_fields = (
@@ -43,6 +45,7 @@ class QueueStaffSerializer(serializers.ModelSerializer):
             "last_token_issued",
             "created_at",
             "join_url",
+            "qr_image_url",
             "qr_png_base64",
         )
 
@@ -51,10 +54,15 @@ class QueueStaffSerializer(serializers.ModelSerializer):
 
         return join_url_for_queue(obj.public_id)
 
-    def get_qr_png_base64(self, obj: Queue) -> str:
-        from queues.qr_image import join_url_for_queue, qr_png_base64
+    def get_qr_image_url(self, obj: Queue) -> str | None:
+        from queues.qr_image import qr_image_absolute_url
 
-        return qr_png_base64(join_url_for_queue(obj.public_id))
+        return qr_image_absolute_url(obj.public_id, self.context.get("request"))
+
+    def get_qr_png_base64(self, obj: Queue) -> str:
+        from queues.qr_image import qr_png_base64
+
+        return qr_png_base64(obj.public_id)
 
 
 class QueueCreateSerializer(serializers.ModelSerializer):

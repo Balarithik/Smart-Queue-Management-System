@@ -27,7 +27,7 @@ class QueueCreateView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         queue = serializer.save()
         return Response(
-            QueueStaffSerializer(queue).data,
+            QueueStaffSerializer(queue, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -171,7 +171,7 @@ class QueueDashboardView(APIView):
 
         return Response(
             {
-                "queue": QueueStaffSerializer(queue).data,
+                "queue": QueueStaffSerializer(queue, context={"request": request}).data,
                 "waiting_count": waiting_count,
                 "now_serving_token": now_serving,
                 "latest_waiting_tokens": latest_waiting_tokens,

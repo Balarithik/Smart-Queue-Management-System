@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -37,8 +40,13 @@ class QueueFlowTests(APITestCase):
         self.assertIn("public_id", response.data)
         self.assertIn("qr_png_base64", response.data)
         self.assertIn("join_url", response.data)
+        self.assertIn("qr_image_url", response.data)
+        self.assertIn("/media/qr/", response.data["qr_image_url"])
         q = Queue.objects.get(public_id=response.data["public_id"])
         self.assertEqual(q.organization_id, self.org.id)
+        png = Path(settings.MEDIA_ROOT) / "qr" / f"{q.public_id}.png"
+        self.assertTrue(png.is_file())
+        self.assertGreater(png.stat().st_size, 100)
 
     def test_join_increments_token_and_returns_position(self):
         url = reverse("queue-join", kwargs={"public_id": str(self.queue.public_id)})

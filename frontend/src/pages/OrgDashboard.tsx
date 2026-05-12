@@ -23,6 +23,9 @@ type QueueRow = {
   is_active: boolean
   last_token_issued: number
   created_at: string
+  join_url: string
+  qr_image_url: string | null
+  qr_png_base64: string
 }
 
 type OrgStats = {
@@ -286,11 +289,33 @@ export function OrgDashboard() {
         ) : (
           <ul className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
             {queues.map((q) => (
-              <li key={q.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div>
-                  <span className="font-medium text-slate-900">{q.name}</span>
-                  <span className="ml-2 text-sm text-slate-500">{q.slug}</span>
-                  <p className="mt-0.5 text-xs text-slate-400">Issued: {q.last_token_issued}</p>
+              <li
+                key={q.id}
+                className="flex flex-wrap items-start justify-between gap-4 px-4 py-4"
+              >
+                <div className="flex min-w-0 flex-1 gap-4">
+                  {q.qr_image_url ? (
+                    <img
+                      src={q.qr_image_url}
+                      alt=""
+                      width={96}
+                      height={96}
+                      className="h-24 w-24 shrink-0 rounded-lg border border-slate-200 bg-white object-contain"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-400"
+                      title="QR unavailable"
+                    >
+                      QR
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <span className="font-medium text-slate-900">{q.name}</span>
+                    <span className="ml-2 text-sm text-slate-500">{q.slug}</span>
+                    <p className="mt-0.5 text-xs text-slate-400">Issued: {q.last_token_issued}</p>
+                    <p className="mt-1 break-all text-xs text-slate-500">{q.join_url}</p>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <span
@@ -310,7 +335,7 @@ export function OrgDashboard() {
                     className="text-xs font-medium text-slate-600 hover:text-slate-900"
                     to={`/queues/${q.public_id}/qr`}
                   >
-                    QR
+                    QR page
                   </Link>
                 </div>
               </li>

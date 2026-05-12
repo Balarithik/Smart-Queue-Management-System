@@ -50,7 +50,7 @@ class OrganizationQueuesView(APIView):
         org = get_object_or_404(Organization, pk=pk)
         self.check_object_permissions(request, org)
         qs = Queue.objects.filter(organization=org)
-        data = QueueSerializer(qs, many=True).data
+        data = QueueSerializer(qs, many=True, context={"request": request}).data
         return Response(data)
 
 

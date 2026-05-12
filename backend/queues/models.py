@@ -31,6 +31,14 @@ class Queue(models.Model):
     def __str__(self) -> str:
         return f"{self.organization.slug}:{self.slug}"
 
+    def save(self, *args, **kwargs):
+        adding = self._state.adding
+        super().save(*args, **kwargs)
+        if adding:
+            from queues.qr_image import ensure_queue_qr_file
+
+            ensure_queue_qr_file(self.public_id)
+
 
 class QueueEntry(models.Model):
     """One person's position in a queue."""

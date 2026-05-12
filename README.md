@@ -96,7 +96,7 @@ Each **`ORGANIZATION`** or **`ADMIN`** user may own **one** [`organizations.Orga
 |----------|--------|------|
 | `/api/organizations/` | POST | Bearer token; **`ORGANIZATION`** or **`ADMIN`** — create organization (`name`, optional `slug`, optional `description`) |
 | `/api/organizations/me/` | GET | Bearer token; **`ORGANIZATION`** or **`ADMIN`** — current user’s organization (**404** if none) |
-| `/api/organizations/<id>/queues/` | GET | Bearer token; organization **owner** or **`ADMIN`** — list queues |
+| `/api/organizations/<id>/queues/` | GET | Bearer token; organization **owner** or **`ADMIN`** — list queues (each row includes **`join_url`**, **`qr_image_url`**, **`qr_png_base64`**) |
 | `/api/organizations/<id>/stats/` | GET | Bearer token; organization **owner** or **`ADMIN`** — `queue_count`, `active_queue_count` |
 
 React routes (organization-focused UX):
@@ -105,19 +105,21 @@ React routes (organization-focused UX):
 |-------|---------|
 | `/org/register` | Register with role **`ORGANIZATION`** (links to standard registration API) |
 | `/org/login` | Sign in; defaults redirect to **`/org/dashboard`** |
-| `/org/dashboard` | **`ORGANIZATION`** / **`ADMIN`** only — load or create organization, view stats and queue list |
+| `/org/dashboard` | **`ORGANIZATION`** / **`ADMIN`** only — load or create organization, stats, queue list with **QR thumbnails** (`qr_image_url`) |
 
 ### Queue management
 
 Queues use a stable **`public_id`** (UUID) for join URLs and QR codes. **[`queues.QueueEntry`](backend/queues/models.py)** stores each customer ticket (`token` sequence) and **`WAITING` / `CALLED` / `COMPLETED`** status. Join and **call next** use **`transaction.atomic()`** with **`select_for_update()`** on the [`Queue`](backend/queues/models.py) row (and entries when advancing).
 
-Set **`FRONTEND_ORIGIN`** in `.env` (see [`backend/config/settings/base.py`](backend/config/settings/base.py)) so QR codes embed the correct SPA join URL (default `http://127.0.0.1:5173`).
+Set **`FRONTEND_ORIGIN`** in `.env` (see [`backend/config/settings/base.py`](backend/config/settings/base.py)) so QR codes embed the correct SPA join URL (`{FRONTEND_ORIGIN}/join/{queue_public_id}`).
+
+Each queue’s QR PNG is written under **`MEDIA_ROOT/qr/<public_id>.png`** (via the **`qrcode`** library). In **`DEBUG`**, [`config/urls.py`](backend/config/urls.py) serves **`/media/`** so **`qr_image_url`** loads in the browser.
 
 | Endpoint | Method | Auth |
 |----------|--------|------|
-| `/api/queues/` | POST | Bearer; **`ORGANIZATION`** or **`ADMIN`** — create queue (`name`, optional `slug`; admins send `organization_id`) — response includes **`qr_png_base64`** and **`join_url`** |
+| `/api/queues/` | POST | Bearer; **`ORGANIZATION`** or **`ADMIN`** — create queue (`name`, optional `slug`; admins send `organization_id`) — response includes **`join_url`**, **`qr_image_url`**, **`qr_png_base64`** |
 | `/api/queues/<uuid>/` | GET | Public — queue name / active flag |
-| `/api/queues/<uuid>/manage/` | GET | Bearer; queue org **owner** or **`ADMIN`** — staff detail + QR |
+| `/api/queues/<uuid>/manage/` | GET | Bearer; queue org **owner** or **`ADMIN`** — staff detail + **`join_url`**, **`qr_image_url`**, **`qr_png_base64`** |
 | `/api/queues/<uuid>/join/` | POST | Public — issue token; returns **`token`**, **`waiting_ahead`** |
 | `/api/queues/<uuid>/status/?token=` | GET | Public — entry status and **`waiting_ahead`** |
 | `/api/queues/<uuid>/next/` | POST | Bearer; owner or **`ADMIN`** — call next **`WAITING`** token (**`select_for_update`**) |
