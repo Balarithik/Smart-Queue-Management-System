@@ -102,6 +102,9 @@ STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Used for QR codes and join links (no trailing slash).
+FRONTEND_ORIGIN = env("FRONTEND_ORIGIN", default="http://127.0.0.1:5173")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.User"

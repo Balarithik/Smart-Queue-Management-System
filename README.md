@@ -86,7 +86,51 @@ Then set **`role`** to **`ADMIN`** in the Django admin **Users** screen if neede
 
 The React app stores tokens in **`localStorage`**, attaches **`Authorization: Bearer`** on API calls, and refreshes access tokens on **401** via [`frontend/src/api/client.ts`](frontend/src/api/client.ts). Protected UI routes wrap [`ProtectedRoute`](frontend/src/components/ProtectedRoute.tsx).
 
-Backend tests: `python manage.py test accounts`.
+Backend tests: `python manage.py test accounts organizations queues`.
+
+### Organizations
+
+Each **`ORGANIZATION`** or **`ADMIN`** user may own **one** [`organizations.Organization`](backend/organizations/models.py) record (`owner` is a **OneToOne** with [`accounts.User`](backend/accounts/models.py)). [`queues.Queue`](backend/queues/models.py) rows belong to an organization (`slug` unique per organization).
+
+| Endpoint | Method | Auth |
+|----------|--------|------|
+| `/api/organizations/` | POST | Bearer token; **`ORGANIZATION`** or **`ADMIN`** — create organization (`name`, optional `slug`, optional `description`) |
+| `/api/organizations/me/` | GET | Bearer token; **`ORGANIZATION`** or **`ADMIN`** — current user’s organization (**404** if none) |
+| `/api/organizations/<id>/queues/` | GET | Bearer token; organization **owner** or **`ADMIN`** — list queues |
+| `/api/organizations/<id>/stats/` | GET | Bearer token; organization **owner** or **`ADMIN`** — `queue_count`, `active_queue_count` |
+
+React routes (organization-focused UX):
+
+| Route | Purpose |
+|-------|---------|
+| `/org/register` | Register with role **`ORGANIZATION`** (links to standard registration API) |
+| `/org/login` | Sign in; defaults redirect to **`/org/dashboard`** |
+| `/org/dashboard` | **`ORGANIZATION`** / **`ADMIN`** only — load or create organization, view stats and queue list |
+
+### Queue management
+
+Queues use a stable **`public_id`** (UUID) for join URLs and QR codes. **[`queues.QueueEntry`](backend/queues/models.py)** stores each customer ticket (`token` sequence) and **`WAITING` / `CALLED` / `COMPLETED`** status. Join and **call next** use **`transaction.atomic()`** with **`select_for_update()`** on the [`Queue`](backend/queues/models.py) row (and entries when advancing).
+
+Set **`FRONTEND_ORIGIN`** in `.env` (see [`backend/config/settings/base.py`](backend/config/settings/base.py)) so QR codes embed the correct SPA join URL (default `http://127.0.0.1:5173`).
+
+| Endpoint | Method | Auth |
+|----------|--------|------|
+| `/api/queues/` | POST | Bearer; **`ORGANIZATION`** or **`ADMIN`** — create queue (`name`, optional `slug`; admins send `organization_id`) — response includes **`qr_png_base64`** and **`join_url`** |
+| `/api/queues/<uuid>/` | GET | Public — queue name / active flag |
+| `/api/queues/<uuid>/manage/` | GET | Bearer; queue org **owner** or **`ADMIN`** — staff detail + QR |
+| `/api/queues/<uuid>/join/` | POST | Public — issue token; returns **`token`**, **`waiting_ahead`** |
+| `/api/queues/<uuid>/status/?token=` | GET | Public — entry status and **`waiting_ahead`** |
+| `/api/queues/<uuid>/next/` | POST | Bearer; owner or **`ADMIN`** — call next **`WAITING`** token (**`select_for_update`**) |
+| `/api/queues/<uuid>/dashboard/` | GET | Bearer; owner or **`ADMIN`** — waiting counts, latest tokens, QR |
+
+React routes:
+
+| Route | Purpose |
+|-------|---------|
+| `/queues/create` | **`ORGANIZATION`** / **`ADMIN`** — create queue, then redirect to QR |
+| `/queues/:publicId/qr` | Operator — show join URL + QR |
+| `/queues/:publicId/dashboard` | Operator — live stats and **Call next** |
+| `/join/:publicId` | Public — join queue and poll status |
 
 ### Production build (frontend)
 
@@ -158,16 +202,17 @@ docker compose exec backend python manage.py createsuperuser
 
 ## Backend apps (modules)
 
-- **accounts** — users and authentication extensions (placeholder).
-- **organizations** — tenants / org structure (placeholder).
-- **queues** — queue logic (placeholder).
+- **accounts** — custom user model and JWT authentication.
+- **organizations** — tenant **`Organization`** model and REST API (`/api/organizations/`).
+- **queues** — **`Queue`** + **`QueueEntry`**, join/next APIs, QR generation (`qrcode`, `Pillow`).
 - **notifications** — outbound notifications (placeholder).
 - **reports** — reporting (placeholder).
 
-Each app exposes an empty route include under `/api/<app>/` ready for future endpoints.
+Apps **`notifications`** and **`reports`** still expose route stubs under `/api/<app>/` for future work.
 
 ## Configuration notes
 
+- **QR join URLs**: Set **`FRONTEND_ORIGIN`** so QR codes point at your SPA (same file as other env vars).
 - **CORS**: Configured via `django-cors-headers` and `CORS_ALLOWED_ORIGINS` (see [`backend/config/settings/base.py`](backend/config/settings/base.py)).
 - **Static files**: Development uses Django staticfiles storage; production uses **WhiteNoise** compressed manifests (see [`production.py`](backend/config/settings/production.py)).
 - **Logging**: Console logging with level `LOG_LEVEL` (default `INFO`).

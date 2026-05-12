@@ -7,10 +7,18 @@ import { About } from './pages/About'
 import { Dashboard } from './pages/Dashboard'
 import { Home } from './pages/Home'
 import { Login } from './pages/Login'
+import { JoinQueue } from './pages/JoinQueue'
+import { OrgDashboard } from './pages/OrgDashboard'
+import { OrgLogin } from './pages/OrgLogin'
+import { OrgRegister } from './pages/OrgRegister'
+import { QueueCreate } from './pages/QueueCreate'
+import { QueueOperatorDashboard } from './pages/QueueOperatorDashboard'
+import { QueueQrPage } from './pages/QueueQrPage'
 import { Register } from './pages/Register'
 
 function Shell() {
   const { user, logout } = useAuth()
+  const showOrgArea = user?.role === 'ORGANIZATION' || user?.role === 'ADMIN'
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -45,6 +53,26 @@ function Shell() {
                 >
                   Dashboard
                 </NavLink>
+                {showOrgArea ? (
+                  <>
+                    <NavLink
+                      to="/org/dashboard"
+                      className={({ isActive }) =>
+                        isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                      }
+                    >
+                      Org dashboard
+                    </NavLink>
+                    <NavLink
+                      to="/queues/create"
+                      className={({ isActive }) =>
+                        isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                      }
+                    >
+                      Create queue
+                    </NavLink>
+                  </>
+                ) : null}
                 <button
                   type="button"
                   className="text-slate-600 hover:text-slate-900"
@@ -71,6 +99,22 @@ function Shell() {
                 >
                   Register
                 </NavLink>
+                <NavLink
+                  to="/org/register"
+                  className={({ isActive }) =>
+                    isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                  }
+                >
+                  Org sign up
+                </NavLink>
+                <NavLink
+                  to="/org/login"
+                  className={({ isActive }) =>
+                    isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                  }
+                >
+                  Org sign in
+                </NavLink>
               </>
             )}
           </div>
@@ -82,6 +126,8 @@ function Shell() {
         <Route path="/about" element={<About />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/org/register" element={<OrgRegister />} />
+        <Route path="/org/login" element={<OrgLogin />} />
         <Route
           path="/dashboard"
           element={
@@ -90,6 +136,39 @@ function Shell() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/org/dashboard"
+          element={
+            <ProtectedRoute roles={['ORGANIZATION', 'ADMIN']}>
+              <OrgDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/queues/create"
+          element={
+            <ProtectedRoute roles={['ORGANIZATION', 'ADMIN']}>
+              <QueueCreate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/queues/:publicId/qr"
+          element={
+            <ProtectedRoute roles={['ORGANIZATION', 'ADMIN']}>
+              <QueueQrPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/queues/:publicId/dashboard"
+          element={
+            <ProtectedRoute roles={['ORGANIZATION', 'ADMIN']}>
+              <QueueOperatorDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/join/:publicId" element={<JoinQueue />} />
       </Routes>
     </div>
   )
