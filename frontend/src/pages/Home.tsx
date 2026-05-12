@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { apiClient } from '../api/client'
+import { bareClient } from '../api/client'
 
 type HealthResponse = {
   status: string
@@ -13,7 +13,7 @@ export function Home() {
 
   useEffect(() => {
     let cancelled = false
-    apiClient
+    bareClient
       .get<HealthResponse>('/api/health/')
       .then((res) => {
         if (!cancelled) setHealth(res.data)

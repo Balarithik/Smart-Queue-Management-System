@@ -62,6 +62,32 @@ npm run dev
 - [`vite.config.ts`](frontend/vite.config.ts) proxies **`/api`** → `http://localhost:8000`.
 - Leave `VITE_API_BASE_URL` empty in dev so Axios calls like `/api/health/` go through the proxy.
 
+### Authentication (JWT)
+
+The API uses **django-rest-framework-simplejwt**. The custom user model lives in **`accounts.User`** with **`role`**: `USER`, `ORGANIZATION`, or `ADMIN`.
+
+| Endpoint | Method | Auth |
+|----------|--------|------|
+| `/api/accounts/register/` | POST | Public (`USER` or `ORGANIZATION`; `ADMIN` not self-service) |
+| `/api/accounts/token/` | POST | Public (login; returns `access` + `refresh`) |
+| `/api/accounts/token/refresh/` | POST | Public (body: `{ "refresh": "<token>" }`) |
+| `/api/accounts/me/` | GET | Bearer access token |
+| `/api/accounts/admin/ping/` | GET | `ADMIN` only |
+| `/api/accounts/organization/ping/` | GET | `ORGANIZATION` or `ADMIN` |
+
+Create an **admin** user (including `ADMIN` role) via Django:
+
+```bash
+cd backend
+python manage.py createsuperuser
+```
+
+Then set **`role`** to **`ADMIN`** in the Django admin **Users** screen if needed.
+
+The React app stores tokens in **`localStorage`**, attaches **`Authorization: Bearer`** on API calls, and refreshes access tokens on **401** via [`frontend/src/api/client.ts`](frontend/src/api/client.ts). Protected UI routes wrap [`ProtectedRoute`](frontend/src/components/ProtectedRoute.tsx).
+
+Backend tests: `python manage.py test accounts`.
+
 ### Production build (frontend)
 
 Set `VITE_API_BASE_URL` to your deployed API origin (no trailing slash), then:
