@@ -1,7 +1,9 @@
 from django.db import transaction
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,10 +11,12 @@ from rest_framework.views import APIView
 from accounts.permissions import IsOrganizationRole
 from organizations.permissions import IsOrganizationOwnerOrAdmin
 from queues.models import Queue, QueueEntry
+from queues.pagination import QueueSearchPagination
 from queues.realtime import build_queue_status_snapshot, publish_queue_update
 from queues.serializers import (
     QueueCreateSerializer,
     QueuePublicSerializer,
+    QueueSearchSerializer,
     QueueStaffSerializer,
     QueueStatusSnapshotSerializer,
 )
@@ -24,6 +28,7 @@ class QueueCreateView(generics.CreateAPIView):
 
     permission_classes = [IsAuthenticated, IsOrganizationRole]
     serializer_class = QueueCreateSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -33,6 +38,39 @@ class QueueCreateView(generics.CreateAPIView):
             QueueStaffSerializer(queue, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class QueueSearchView(generics.ListAPIView):
+    """GET /api/queues/search/?q=&page=&page_size=&is_active="""
+
+    permission_classes = [AllowAny]
+    serializer_class = QueueSearchSerializer
+    pagination_class = QueueSearchPagination
+
+    def get_queryset(self):
+        qs = (
+            Queue.objects.select_related("organization")
+            .annotate(
+                waiting_count=Count(
+                    "entries",
+                    filter=Q(entries__status=QueueEntry.Status.WAITING),
+                )
+            )
+            .order_by("organization__name", "name")
+        )
+
+        is_active = self.request.query_params.get("is_active", "true")
+        if is_active.lower() in ("1", "true", "yes"):
+            qs = qs.filter(is_active=True)
+        elif is_active.lower() in ("0", "false", "no"):
+            qs = qs.filter(is_active=False)
+
+        query = (self.request.query_params.get("q") or "").strip()
+        if query:
+            qs = qs.filter(
+                Q(name__icontains=query) | Q(organization__name__icontains=query)
+            )
+        return qs
 
 
 class QueuePublicDetailView(generics.RetrieveAPIView):

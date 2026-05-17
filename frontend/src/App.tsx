@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 
 import { AuthProvider } from './auth/AuthProvider'
 import { useAuth } from './auth/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { SplashScreen } from './components/SplashScreen'
 import { About } from './pages/About'
 import { Dashboard } from './pages/Dashboard'
 import { Home } from './pages/Home'
@@ -211,10 +213,26 @@ function Shell() {
   )
 }
 
+function AppBootstrap() {
+  const { loading } = useAuth()
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMinSplashElapsed(true), 1500)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  if (loading || !minSplashElapsed) {
+    return <SplashScreen />
+  }
+
+  return <Shell />
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <Shell />
+      <AppBootstrap />
     </AuthProvider>
   )
 }

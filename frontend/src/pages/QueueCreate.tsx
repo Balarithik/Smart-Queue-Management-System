@@ -1,22 +1,25 @@
-import axios from 'axios'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { formatApiError } from '../api/errors'
 import { apiClient } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 
-function formatApiError(err: unknown): string {
-  if (!axios.isAxiosError(err) || err.response?.data == null) return 'Request failed.'
-  const data = err.response.data
-  if (typeof data === 'string') return data
-  if (typeof data === 'object' && data !== null && 'detail' in data && typeof (data as { detail?: unknown }).detail === 'string') {
-    return (data as { detail: string }).detail
-  }
-  return 'Request failed.'
-}
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']
 
 type CreatedQueue = {
   public_id: string
+}
+
+function validateImageFile(file: File): string | null {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return 'Image must be JPEG or PNG.'
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return 'Image must be 2 MB or smaller.'
+  }
+  return null
 }
 
 export function QueueCreate() {
@@ -25,16 +28,52 @@ export function QueueCreate() {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [organizationId, setOrganizationId] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const previewUrl = useMemo(
+    () => (imageFile ? URL.createObjectURL(imageFile) : null),
+    [imageFile],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
+  function handleImageChange(file: File | null) {
+    setImageError(null)
+    if (!file) {
+      setImageFile(null)
+      return
+    }
+    const validation = validateImageFile(file)
+    if (validation) {
+      setImageError(validation)
+      setImageFile(null)
+      return
+    }
+    setImageFile(file)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (imageFile) {
+      const validation = validateImageFile(imageFile)
+      if (validation) {
+        setImageError(validation)
+        return
+      }
+    }
     setSubmitting(true)
     try {
-      const payload: { name: string; slug?: string; organization_id?: number } = { name: name.trim() }
-      if (slug.trim()) payload.slug = slug.trim()
+      const form = new FormData()
+      form.append('name', name.trim())
+      if (slug.trim()) form.append('slug', slug.trim())
       if (user?.role === 'ADMIN') {
         const id = Number.parseInt(organizationId, 10)
         if (!Number.isFinite(id)) {
@@ -42,9 +81,13 @@ export function QueueCreate() {
           setSubmitting(false)
           return
         }
-        payload.organization_id = id
+        form.append('organization_id', String(id))
       }
-      const { data } = await apiClient.post<CreatedQueue>('/api/queues/', payload)
+      if (imageFile) form.append('image', imageFile)
+
+      const { data } = await apiClient.post<CreatedQueue>('/api/queues/', form, {
+        headers: { 'Content-Type': undefined },
+      })
       navigate(`/queues/${data.public_id}/qr`, { replace: true })
     } catch (err) {
       setError(formatApiError(err))
@@ -57,7 +100,8 @@ export function QueueCreate() {
     <div className="mx-auto max-w-md px-6 py-16">
       <h1 className="text-2xl font-semibold text-slate-900">Create queue</h1>
       <p className="mt-2 text-sm text-slate-600">
-        Creates a queue with a shareable ID and QR code.{' '}
+        Creates a queue with a shareable ID and QR code. Optional banner image (JPEG/PNG, max 2
+        MB).{' '}
         <Link className="font-medium text-indigo-600 hover:text-indigo-500" to="/org/dashboard">
           Back to organization
         </Link>
@@ -104,6 +148,28 @@ export function QueueCreate() {
             />
           </div>
         ) : null}
+        <div>
+          <label className="block text-sm font-medium text-slate-700" htmlFor="qc-image">
+            Banner image (optional)
+          </label>
+          <input
+            id="qc-image"
+            type="file"
+            accept="image/jpeg,image/png"
+            className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700"
+            onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
+          />
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Queue banner preview"
+              className="mt-3 h-32 w-full rounded-lg border border-slate-200 object-cover"
+            />
+          ) : null}
+          {imageError ? (
+            <p className="mt-2 text-sm text-red-700">{imageError}</p>
+          ) : null}
+        </div>
         {error ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
         ) : null}

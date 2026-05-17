@@ -1,6 +1,16 @@
 import uuid
+from pathlib import Path
 
 from django.db import models
+
+from queues.validators import validate_queue_image
+
+
+def queue_image_upload_to(instance, filename: str) -> str:
+    ext = Path(filename).suffix.lower() or ".jpg"
+    if ext not in (".jpg", ".jpeg", ".png"):
+        ext = ".jpg"
+    return f"queues/{instance.public_id}/image{ext}"
 
 
 class Queue(models.Model):
@@ -15,6 +25,12 @@ class Queue(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255)
     is_active = models.BooleanField(default=True)
+    image = models.ImageField(
+        upload_to=queue_image_upload_to,
+        blank=True,
+        null=True,
+        validators=[validate_queue_image],
+    )
     # Monotonic ticket counter; last number issued to a joining customer.
     last_token_issued = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -29,6 +45,7 @@ class Queue(models.Model):
         ]
         indexes = [
             models.Index(fields=["organization", "created_at"]),
+            models.Index(fields=["name"]),
         ]
 
     def __str__(self) -> str:

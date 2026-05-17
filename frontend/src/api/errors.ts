@@ -29,12 +29,12 @@ function friendlyFieldMessage(field: string, messages: string[]): string | null 
 
 export function formatApiError(err: unknown, fallback = 'Request failed.'): string {
   if (!axios.isAxiosError(err) || err.response?.data == null) {
-    return 'Registration failed. Check that the API is running and migrations are applied.'
+    return fallback
   }
   const status = err.response.status
   const data = err.response.data
   if (status >= 500) {
-    return 'Server error during registration. Ensure the database is migrated (run: python manage.py migrate).'
+    return 'Server error. Please try again later.'
   }
   if (typeof data === 'string') return data
   if (typeof data === 'object' && data !== null) {

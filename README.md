@@ -97,6 +97,12 @@ From `backend/` (with venv activated):
 python manage.py test accounts organizations queues reports config
 ```
 
+Queue image upload and search API tests live under **`queues.tests`** (`test_queue_image`, `test_queue_search`, `test_queue_flow`). Example:
+
+```bash
+python manage.py test queues
+```
+
 Critical production paths are covered in **`config.tests`** (health probe, register/login/refresh, full queue join → call next journey) plus existing **`accounts`** and **`queues`** suites.
 
 ### Organizations
@@ -116,7 +122,8 @@ React routes (organization-focused UX):
 |-------|---------|
 | `/org/register` | Register with role **`ORGANIZATION`** (links to standard registration API) |
 | `/org/login` | Sign in; defaults redirect to **`/org/dashboard`** |
-| `/org/dashboard` | **`ORGANIZATION`** / **`ADMIN`** only — load or create organization, stats, queue list with **QR thumbnails** (`qr_image_url`) |
+| `/org/dashboard` | **`ORGANIZATION`** / **`ADMIN`** only — load or create organization, stats, queue list with **banner** (`image_url`) and **QR thumbnails** (`qr_image_url`) |
+| `/dashboard` | Authenticated — **`USER`**: search/join catalog via **`/api/queues/search/`** with live status polling; other roles see account shortcuts |
 
 ### Queue management
 
@@ -124,11 +131,12 @@ Queues use a stable **`public_id`** (UUID) for join URLs and QR codes. **[`queue
 
 Set **`FRONTEND_ORIGIN`** in `.env` (see [`backend/config/settings/base.py`](backend/config/settings/base.py)) so QR codes embed the correct SPA join URL (`{FRONTEND_ORIGIN}/join/{queue_public_id}`).
 
-Each queue’s QR PNG is written under **`MEDIA_ROOT/qr/<public_id>.png`** (via the **`qrcode`** library). In **`DEBUG`**, [`config/urls.py`](backend/config/urls.py) serves **`/media/`** so **`qr_image_url`** loads in the browser.
+Each queue’s QR PNG is written under **`MEDIA_ROOT/qr/<public_id>.png`** (via the **`qrcode`** library). Optional banner images are stored under **`MEDIA_ROOT/queues/<public_id>/`** (JPEG/PNG, max size **`QUEUE_IMAGE_MAX_BYTES`** in [`.env.example`](.env.example), default 2 MB). In **`DEBUG`**, [`config/urls.py`](backend/config/urls.py) serves **`/media/`** so **`qr_image_url`** and **`image_url`** load in the browser. Production Nginx serves **`/media/`** from disk ([`deploy/nginx/sqms-docker.conf`](deploy/nginx/sqms-docker.conf)).
 
 | Endpoint | Method | Auth |
 |----------|--------|------|
-| `/api/queues/` | POST | Bearer; **`ORGANIZATION`** or **`ADMIN`** — create queue (`name`, optional `slug`; admins send `organization_id`) — response includes **`join_url`**, **`qr_image_url`**, **`qr_png_base64`** |
+| `/api/queues/` | POST | Bearer; **`ORGANIZATION`** or **`ADMIN`** — create queue (`name`, optional `slug`, optional **`image`** file; admins send `organization_id`) — JSON or **multipart/form-data**; response includes **`join_url`**, **`qr_image_url`**, **`image_url`**, **`qr_png_base64`** |
+| `/api/queues/search/?q=&page=&page_size=&is_active=` | GET | Public — paginated catalog (`public_id`, `name`, `organization_name`, `image_url`, `queue_status`, `waiting_count`) |
 | `/api/queues/<uuid>/` | GET | Public — queue name / active flag |
 | `/api/queues/<uuid>/manage/` | GET | Bearer; queue org **owner** or **`ADMIN`** — staff detail + **`join_url`**, **`qr_image_url`**, **`qr_png_base64`** |
 | `/api/queues/<uuid>/join/` | POST | Public — issue token; returns **`token`**, **`waiting_ahead`** |
@@ -140,10 +148,14 @@ React routes:
 
 | Route | Purpose |
 |-------|---------|
-| `/queues/create` | **`ORGANIZATION`** / **`ADMIN`** — create queue, then redirect to QR |
+| `/queues/create` | **`ORGANIZATION`** / **`ADMIN`** — create queue (optional banner image upload), then redirect to QR |
 | `/queues/:publicId/qr` | Operator — show join URL + QR |
 | `/queues/:publicId/dashboard` | Operator — live stats and **Call next** |
 | `/join/:publicId` | Public — join queue; auto-refresh status every **10 seconds** |
+
+### UX shell (frontend)
+
+On first load the SPA shows a branded **splash screen** (~1.5s minimum, until auth bootstrap completes). Shared components: [`ErrorBoundary`](frontend/src/components/ErrorBoundary.tsx), [`SplashScreen`](frontend/src/components/SplashScreen.tsx), [`LoadingScreen`](frontend/src/components/LoadingScreen.tsx). List cards use **Framer Motion** for light enter/expand animations.
 
 ### Real-time updates
 

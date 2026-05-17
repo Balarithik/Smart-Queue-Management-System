@@ -102,6 +102,9 @@ STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+QUEUE_IMAGE_MAX_BYTES = env.int("QUEUE_IMAGE_MAX_BYTES", default=2_097_152)
+QUEUE_IMAGE_ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png"]
+
 # Used for QR codes and join links (no trailing slash).
 FRONTEND_ORIGIN = env("FRONTEND_ORIGIN", default="http://127.0.0.1:5173")
 

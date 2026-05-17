@@ -9,6 +9,7 @@ class QueueSerializer(serializers.ModelSerializer):
     join_url = serializers.SerializerMethodField()
     qr_image_url = serializers.SerializerMethodField()
     qr_png_base64 = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Queue
@@ -23,6 +24,7 @@ class QueueSerializer(serializers.ModelSerializer):
             "join_url",
             "qr_image_url",
             "qr_png_base64",
+            "image_url",
         )
         read_only_fields = fields
 
@@ -40,6 +42,11 @@ class QueueSerializer(serializers.ModelSerializer):
         from queues.qr_image import qr_png_base64
 
         return qr_png_base64(obj.public_id)
+
+    def get_image_url(self, obj):
+        from queues.media_urls import queue_image_absolute_url
+
+        return queue_image_absolute_url(obj, self.context.get("request"))
 
 
 class OrganizationSerializer(serializers.ModelSerializer):

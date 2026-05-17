@@ -24,6 +24,7 @@ type QueueRow = {
   last_token_issued: number
   created_at: string
   join_url: string
+  image_url: string | null
   qr_image_url: string | null
   qr_png_base64: string
 }
@@ -303,10 +304,19 @@ export function OrgDashboard() {
                 className="flex flex-wrap items-start justify-between gap-4 px-4 py-4"
               >
                 <div className="flex min-w-0 flex-1 gap-4">
+                  {q.image_url ? (
+                    <img
+                      src={q.image_url}
+                      alt={`${q.name} banner`}
+                      width={96}
+                      height={96}
+                      className="h-24 w-24 shrink-0 rounded-lg border border-slate-200 object-cover"
+                    />
+                  ) : null}
                   {q.qr_image_url ? (
                     <img
                       src={q.qr_image_url}
-                      alt=""
+                      alt={`${q.name} QR code`}
                       width={96}
                       height={96}
                       className="h-24 w-24 shrink-0 rounded-lg border border-slate-200 bg-white object-contain"
