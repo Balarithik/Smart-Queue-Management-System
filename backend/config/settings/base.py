@@ -145,6 +145,8 @@ CORS_ALLOWED_ORIGINS = env.list(
     ],
 )
 
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
 LOG_LEVEL = env("LOG_LEVEL", default="INFO")
 LOGGING = {
     "version": 1,

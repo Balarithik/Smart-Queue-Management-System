@@ -25,4 +25,4 @@ RUN chmod +x docker-entrypoint.sh \
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 # Fewer workers + higher timeout: Docker Desktop / stray TCP probes can otherwise hit
 # Gunicorn's default 30s worker timeout ("WORKER TIMEOUT", "no URI read").
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--graceful-timeout", "60", "--access-logfile", "-", "--error-logfile", "-"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py"]

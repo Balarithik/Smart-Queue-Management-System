@@ -15,7 +15,9 @@ Monorepo skeleton: Django API (`backend/`), React + Vite SPA (`frontend/`), and 
 | [`backend/`](backend/) | Django project `config` with apps: `accounts`, `organizations`, `queues`, `notifications`, `reports` |
 | [`backend/config/settings/`](backend/config/settings/) | Shared `base.py`, `development.py`, `production.py` |
 | [`frontend/`](frontend/) | Vite + React + TypeScript, Tailwind CSS v4, React Router v6, Axios |
-| [`docker-compose.yml`](docker-compose.yml) | `db` + `backend`; optional `frontend` via profile `dev` |
+| [`docker-compose.yml`](docker-compose.yml) | Development: `db` + `backend`; optional `frontend` via profile `dev` |
+| [`docker-compose.prod.yml`](docker-compose.prod.yml) | Production: `db` + Gunicorn `backend` + Nginx `nginx` |
+| [`deploy/`](deploy/) | Nginx configs, production web Dockerfile |
 
 ## Local development (without Docker)
 
@@ -87,7 +89,15 @@ Then set **`role`** to **`ADMIN`** in the Django admin **Users** screen if neede
 
 The React app stores tokens in **`localStorage`**, attaches **`Authorization: Bearer`** on API calls, and refreshes access tokens on **401** via [`frontend/src/api/client.ts`](frontend/src/api/client.ts). Protected UI routes wrap [`ProtectedRoute`](frontend/src/components/ProtectedRoute.tsx).
 
-Backend tests: `python manage.py test accounts organizations queues reports`.
+### Running tests
+
+From `backend/` (with venv activated):
+
+```bash
+python manage.py test accounts organizations queues reports config
+```
+
+Critical production paths are covered in **`config.tests`** (health probe, register/login/refresh, full queue join → call next journey) plus existing **`accounts`** and **`queues`** suites.
 
 ### Organizations
 
@@ -164,7 +174,88 @@ npm run build
 
 Output is written to `frontend/dist/`.
 
-## Docker Compose
+## Production deployment
+
+### Architecture
+
+| Tier | Technology | Role |
+|------|------------|------|
+| API | **Gunicorn** + Django | REST API, admin, WhiteNoise **`/static/`** |
+| App DB | **PostgreSQL** | Required when `DJANGO_SETTINGS_MODULE=config.settings.production` |
+| Web | **Nginx** | Serves React **`frontend/dist`**, proxies **`/api/`**, **`/admin/`**, **`/static/`**; serves **`/media/`** (QR images) from disk |
+| Process | **Docker Compose** | [`docker-compose.prod.yml`](docker-compose.prod.yml) — `db` + `backend` + `nginx` |
+
+Configuration files:
+
+- [`backend/gunicorn.conf.py`](backend/gunicorn.conf.py) — workers, timeout, bind (override via `GUNICORN_*` env vars)
+- [`deploy/nginx/sqms.conf`](deploy/nginx/sqms.conf) — example bare-metal Nginx site
+- [`deploy/nginx/sqms-docker.conf`](deploy/nginx/sqms-docker.conf) — Nginx config for Compose prod stack
+- [`deploy/Dockerfile.nginx`](deploy/Dockerfile.nginx) — builds SPA + Nginx image
+- [`deploy/README.md`](deploy/README.md) — quick reference
+
+### Environment variables (production)
+
+Copy [`.env.example`](.env.example) to `.env` and set at minimum:
+
+| Variable | Purpose |
+|----------|---------|
+| `SECRET_KEY` | Long random string (**required** in production) |
+| `DATABASE_URL` | PostgreSQL URL (**required** in production) |
+| `ALLOWED_HOSTS` | Comma-separated API hostnames |
+| `CORS_ALLOWED_ORIGINS` | SPA origins allowed to call the API with credentials |
+| `CSRF_TRUSTED_ORIGINS` | Same origins for Django CSRF (admin forms) |
+| `FRONTEND_ORIGIN` | Public SPA URL for QR join links (no trailing slash) |
+| `VITE_API_BASE_URL` | Browser-visible API URL when building the frontend (often same origin as SPA, e.g. `http://localhost` or `https://app.example.com`) |
+| `SECURE_SSL_REDIRECT` | `True` when HTTPS is terminated in front of Django |
+
+Optional: `GUNICORN_WORKERS`, `GUNICORN_TIMEOUT`, notification provider keys (see `.env.example`).
+
+### Health check
+
+`GET /api/health/` returns **200** when the database is reachable:
+
+```json
+{"status": "ok", "service": "smart-queue-api", "checks": {"database": "ok"}}
+```
+
+Returns **503** if the database check fails (used by Docker healthchecks and load balancers).
+
+### Docker Compose (production stack)
+
+```bash
+copy .env.example .env
+# Edit SECRET_KEY, ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS, FRONTEND_ORIGIN, VITE_API_BASE_URL
+
+docker compose -f docker-compose.prod.yml up --build
+```
+
+- Application: [http://localhost](http://localhost) (port **`NGINX_HTTP_PORT`**, default **80**)
+- API (internal): Gunicorn on `backend:8000`
+- Media volume: shared between `backend` and `nginx` for `/media/qr/`
+
+### Bare-metal / VM
+
+1. Install PostgreSQL, Python 3.12+, Node 20+, Nginx.
+2. Deploy backend: `pip install -r requirements.txt`, `migrate`, `collectstatic`, run Gunicorn:
+
+   ```bash
+   cd backend
+   export DJANGO_SETTINGS_MODULE=config.settings.production
+   gunicorn -c gunicorn.conf.py
+   ```
+
+3. Build frontend with `VITE_API_BASE_URL` set to your public URL.
+4. Copy `frontend/dist` → `/var/www/sqms/frontend`, mount `MEDIA_ROOT` at `/var/www/sqms/media`.
+5. Enable [`deploy/nginx/sqms.conf`](deploy/nginx/sqms.conf) (adjust `upstream` and paths).
+
+### Security and static/media
+
+- **Production settings** ([`config/settings/production.py`](backend/config/settings/production.py)): `DEBUG=False`, strong `SECRET_KEY`, PostgreSQL required, secure cookies when `SECURE_SSL_REDIRECT=True`, HSTS optional, XSS/MIME/frame protections.
+- **CORS**: `django-cors-headers` — set explicit origins; no wildcard with credentials.
+- **Static files**: collected to `staticfiles/`; served via **WhiteNoise** through Gunicorn (`/static/`).
+- **Media files**: not served by Django in production; **Nginx** serves `/media/` from the shared volume/path (QR PNGs).
+
+## Docker Compose (development)
 
 From the repository root (after copying `.env.example` → `.env` and setting `SECRET_KEY` for anything beyond local experiments):
 
