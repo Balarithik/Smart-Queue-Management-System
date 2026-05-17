@@ -218,9 +218,11 @@ docker compose exec backend python manage.py createsuperuser
 - **organizations** — tenant **`Organization`** model and REST API (`/api/organizations/`).
 - **queues** — **`Queue`** + **`QueueEntry`**, join/next APIs, QR generation (`qrcode`, `Pillow`).
 - **notifications** — abstract notification layer ([`services.py`](backend/notifications/services.py)), integration hooks ([`hooks.py`](backend/notifications/hooks.py)), queue close signal ([`signals.py`](backend/notifications/signals.py)).
-- **reports** — reporting (placeholder).
-
-Apps **`notifications`** and **`reports`** still expose route stubs under `/api/<app>/` for future work.
+- **reports** — analytics schema (`DailyQueueMetric`, `DailyOrganizationMetric`), aggregation services, and REST APIs:
+  - `GET /api/reports/organizations/<pk>/?days=30` — org stats, daily series, per-queue breakdown (org owner or admin).
+  - `GET /api/reports/queues/<public_id>/?days=30` — queue stats, status breakdown, avg wait (org owner or admin).
+  - `GET /api/reports/users/` — platform user stats by role and signups (admin only).
+  - SPA route **`/org/reports`** — Recharts analytics dashboard for organization users.
 
 ## Configuration notes
 

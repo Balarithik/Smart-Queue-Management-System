@@ -9,6 +9,7 @@ import { Home } from './pages/Home'
 import { Login } from './pages/Login'
 import { JoinQueue } from './pages/JoinQueue'
 import { OrgDashboard } from './pages/OrgDashboard'
+import { OrgReports } from './pages/OrgReports'
 import { OrgLogin } from './pages/OrgLogin'
 import { OrgRegister } from './pages/OrgRegister'
 import { QueueCreate } from './pages/QueueCreate'
@@ -62,6 +63,14 @@ function Shell() {
                       }
                     >
                       Org dashboard
+                    </NavLink>
+                    <NavLink
+                      to="/org/reports"
+                      className={({ isActive }) =>
+                        isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                      }
+                    >
+                      Analytics
                     </NavLink>
                     <NavLink
                       to="/queues/create"
@@ -141,6 +150,14 @@ function Shell() {
           element={
             <ProtectedRoute roles={['ORGANIZATION', 'ADMIN']}>
               <OrgDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/org/reports"
+          element={
+            <ProtectedRoute roles={['ORGANIZATION', 'ADMIN']}>
+              <OrgReports />
             </ProtectedRoute>
           }
         />

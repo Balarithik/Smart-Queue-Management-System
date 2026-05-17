@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 
+import { formatApiError, USERNAME_HINT } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
 
 export function OrgRegister() {
@@ -32,8 +33,8 @@ export function OrgRegister() {
         password_confirm: passwordConfirm,
         role: 'ORGANIZATION',
       })
-    } catch {
-      setError('Registration failed. Try a different username.')
+    } catch (err) {
+      setError(formatApiError(err, 'Registration failed. Check your input and try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -69,6 +70,7 @@ export function OrgRegister() {
             onChange={(e) => setUsername(e.target.value)}
             required
           />
+          <p className="mt-1 text-xs text-slate-500">{USERNAME_HINT}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700" htmlFor="org-email">

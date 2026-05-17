@@ -73,6 +73,27 @@ class QueueFlowTests(APITestCase):
 
         e = QueueEntry.objects.get(queue=self.queue, token=1)
         self.assertEqual(e.status, QueueEntry.Status.CALLED)
+        self.assertIsNotNone(e.called_at)
+        self.assertIsNone(e.completed_at)
+
+    def test_second_next_completes_previous_called_entry(self):
+        join_url = reverse("queue-join", kwargs={"public_id": str(self.queue.public_id)})
+        self.client.post(join_url, {}, format="json")
+        self.client.post(join_url, {}, format="json")
+
+        self.client.force_authenticate(user=self.owner)
+        next_url = reverse("queue-next", kwargs={"public_id": str(self.queue.public_id)})
+        self.client.post(next_url, {}, format="json")
+        self.client.post(next_url, {}, format="json")
+
+        first = QueueEntry.objects.get(queue=self.queue, token=1)
+        second = QueueEntry.objects.get(queue=self.queue, token=2)
+        self.assertEqual(first.status, QueueEntry.Status.COMPLETED)
+        self.assertIsNotNone(first.called_at)
+        self.assertIsNotNone(first.completed_at)
+        self.assertEqual(second.status, QueueEntry.Status.CALLED)
+        self.assertIsNotNone(second.called_at)
+        self.assertIsNone(second.completed_at)
 
     def test_next_empty_queue_returns_null_token(self):
         self.client.force_authenticate(user=self.owner)

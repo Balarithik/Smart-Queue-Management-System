@@ -238,6 +238,9 @@ export function OrgDashboard() {
           </p>
         </div>
         <div className="flex gap-3">
+          <Link className="text-sm font-medium text-indigo-600 hover:text-indigo-500" to="/org/reports">
+            View analytics →
+          </Link>
           <Link className="text-sm font-medium text-indigo-600 hover:text-indigo-500" to="/">
             Home
           </Link>

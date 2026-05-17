@@ -27,6 +27,9 @@ class Queue(models.Model):
                 name="queues_queue_organization_slug_uniq",
             ),
         ]
+        indexes = [
+            models.Index(fields=["organization", "created_at"]),
+        ]
 
     def __str__(self) -> str:
         return f"{self.organization.slug}:{self.slug}"
@@ -61,6 +64,8 @@ class QueueEntry(models.Model):
         db_index=True,
     )
     joined_at = models.DateTimeField(auto_now_add=True)
+    called_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ("token",)
@@ -69,6 +74,11 @@ class QueueEntry(models.Model):
                 fields=("queue", "token"),
                 name="queues_queueentry_queue_token_uniq",
             ),
+        ]
+        indexes = [
+            models.Index(fields=["queue", "status"]),
+            models.Index(fields=["queue", "joined_at"]),
+            models.Index(fields=["queue", "called_at"]),
         ]
 
     def __str__(self) -> str:

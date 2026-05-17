@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -112,8 +113,20 @@ class QueueNextView(APIView):
         queue = get_object_or_404(Queue.objects.select_related("organization"), public_id=public_id)
         self.check_object_permissions(request, queue)
 
+        now = timezone.now()
         with transaction.atomic():
             Queue.objects.select_for_update().get(pk=queue.pk)
+            current_called = (
+                QueueEntry.objects.select_for_update()
+                .filter(queue=queue, status=QueueEntry.Status.CALLED)
+                .order_by("token")
+                .first()
+            )
+            if current_called is not None:
+                current_called.status = QueueEntry.Status.COMPLETED
+                current_called.completed_at = now
+                current_called.save(update_fields=["status", "completed_at"])
+
             entry = (
                 QueueEntry.objects.select_for_update()
                 .filter(queue=queue, status=QueueEntry.Status.WAITING)
@@ -132,7 +145,8 @@ class QueueNextView(APIView):
                     }
                 )
             entry.status = QueueEntry.Status.CALLED
-            entry.save(update_fields=["status"])
+            entry.called_at = now
+            entry.save(update_fields=["status", "called_at"])
             remaining = QueueEntry.objects.filter(
                 queue=queue, status=QueueEntry.Status.WAITING
             ).count()

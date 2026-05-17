@@ -55,7 +55,7 @@ class OrganizationQueuesView(APIView):
 
 
 class OrganizationStatsView(APIView):
-    """GET /api/organizations/<pk>/stats/"""
+    """GET /api/organizations/<pk>/stats/ — summary counts (see /api/reports/organizations/<pk>/)."""
 
     permission_classes = [IsAuthenticated, IsOrganizationOwnerOrAdmin]
 
