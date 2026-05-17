@@ -32,10 +32,13 @@ def join_queue(public_id) -> dict:
 
         from notifications.hooks import notify_user_joined_queue
 
-        def _notify_join() -> None:
+        def _after_join() -> None:
             notify_user_joined_queue(queue, entry, waiting_ahead=ahead)
+            from queues.realtime import publish_queue_update
 
-        transaction.on_commit(_notify_join)
+            publish_queue_update(queue, entry)
+
+        transaction.on_commit(_after_join)
 
         return {
             "token": new_token,

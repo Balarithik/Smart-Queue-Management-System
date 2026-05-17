@@ -125,3 +125,20 @@ class QueuePublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Queue
         fields = ("name", "is_active", "public_id")
+
+
+class QueueStatusSnapshotSerializer(serializers.Serializer):
+    """Validated polling / realtime snapshot payload."""
+
+    public_id = serializers.UUIDField()
+    queue_name = serializers.CharField()
+    queue_status = serializers.ChoiceField(choices=["OPEN", "CLOSED"])
+    is_active = serializers.BooleanField()
+    current_token = serializers.IntegerField(allow_null=True)
+    waiting_count = serializers.IntegerField()
+    token = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=QueueEntry.Status.choices)
+    position = serializers.IntegerField()
+    waiting_ahead = serializers.IntegerField()
+    eta_seconds = serializers.IntegerField(allow_null=True)
+    updated_at = serializers.DateTimeField()

@@ -113,3 +113,50 @@ class QueueFlowTests(APITestCase):
         url = reverse("queue-status", kwargs={"public_id": str(self.queue.public_id)})
         r = self.client.get(url)
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_status_returns_realtime_fields_while_waiting(self):
+        join_url = reverse("queue-join", kwargs={"public_id": str(self.queue.public_id)})
+        self.client.post(join_url, {}, format="json")
+        self.client.post(join_url, {}, format="json")
+
+        status_url = reverse("queue-status", kwargs={"public_id": str(self.queue.public_id)})
+        r = self.client.get(status_url, {"token": 2})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data["token"], 2)
+        self.assertEqual(r.data["status"], QueueEntry.Status.WAITING)
+        self.assertEqual(r.data["waiting_ahead"], 1)
+        self.assertEqual(r.data["position"], 2)
+        self.assertIsNone(r.data["current_token"])
+        self.assertEqual(r.data["queue_status"], "OPEN")
+        self.assertIn("updated_at", r.data)
+
+    def test_status_after_next_shows_current_token_and_zero_eta(self):
+        join_url = reverse("queue-join", kwargs={"public_id": str(self.queue.public_id)})
+        self.client.post(join_url, {}, format="json")
+
+        self.client.force_authenticate(user=self.owner)
+        next_url = reverse("queue-next", kwargs={"public_id": str(self.queue.public_id)})
+        self.client.post(next_url, {}, format="json")
+
+        status_url = reverse("queue-status", kwargs={"public_id": str(self.queue.public_id)})
+        r = self.client.get(status_url, {"token": 1})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data["status"], QueueEntry.Status.CALLED)
+        self.assertEqual(r.data["current_token"], 1)
+        self.assertEqual(r.data["position"], 0)
+        self.assertEqual(r.data["waiting_ahead"], 0)
+        self.assertEqual(r.data["eta_seconds"], 0)
+
+    def test_status_closed_queue(self):
+        join_url = reverse("queue-join", kwargs={"public_id": str(self.queue.public_id)})
+        join = self.client.post(join_url, {}, format="json")
+        token = join.data["token"]
+
+        self.queue.is_active = False
+        self.queue.save(update_fields=["is_active"])
+
+        status_url = reverse("queue-status", kwargs={"public_id": str(self.queue.public_id)})
+        r = self.client.get(status_url, {"token": token})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data["queue_status"], "CLOSED")
+        self.assertIsNone(r.data["eta_seconds"])

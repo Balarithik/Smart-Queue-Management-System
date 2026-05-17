@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { apiClient } from '../api/client'
+import { POLL_INTERVAL_MS } from '../config/polling'
+import { usePolling } from '../hooks/usePolling'
 
 type StaffQueue = {
   public_id: string
@@ -65,14 +67,22 @@ export function QueueOperatorDashboard() {
         if (!cancelled) setLoading(false)
       }
     })()
-    const id = window.setInterval(() => {
-      void refresh().catch(() => {})
-    }, 5000)
     return () => {
       cancelled = true
-      window.clearInterval(id)
     }
   }, [publicId, refresh])
+
+  usePolling(
+    async () => {
+      try {
+        await refresh()
+      } catch {
+        /* keep last good snapshot while polling */
+      }
+    },
+    POLL_INTERVAL_MS,
+    Boolean(publicId) && !loading,
+  )
 
   async function callNext() {
     if (!publicId) return

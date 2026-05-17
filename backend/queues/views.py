@@ -9,10 +9,12 @@ from rest_framework.views import APIView
 from accounts.permissions import IsOrganizationRole
 from organizations.permissions import IsOrganizationOwnerOrAdmin
 from queues.models import Queue, QueueEntry
+from queues.realtime import build_queue_status_snapshot, publish_queue_update
 from queues.serializers import (
     QueueCreateSerializer,
     QueuePublicSerializer,
     QueueStaffSerializer,
+    QueueStatusSnapshotSerializer,
 )
 from queues.services import join_queue
 
@@ -85,23 +87,10 @@ class QueueStatusView(APIView):
 
         queue = get_object_or_404(Queue, public_id=public_id)
         entry = get_object_or_404(QueueEntry, queue=queue, token=token)
-        ahead = 0
-        if entry.status == QueueEntry.Status.WAITING:
-            ahead = QueueEntry.objects.filter(
-                queue=queue,
-                status=QueueEntry.Status.WAITING,
-                token__lt=entry.token,
-            ).count()
-        return Response(
-            {
-                "token": entry.token,
-                "status": entry.status,
-                "waiting_ahead": ahead,
-                "queue_name": queue.name,
-                "is_active": queue.is_active,
-                "public_id": str(queue.public_id),
-            }
-        )
+        data = build_queue_status_snapshot(queue, entry)
+        serializer = QueueStatusSnapshotSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
 
 
 class QueueNextView(APIView):
@@ -154,6 +143,11 @@ class QueueNextView(APIView):
         from notifications.hooks import notify_user_became_active
 
         notify_user_became_active(queue, entry)
+
+        def _publish() -> None:
+            publish_queue_update(queue, entry)
+
+        transaction.on_commit(_publish)
 
         return Response(
             {

@@ -122,7 +122,7 @@ Each queue’s QR PNG is written under **`MEDIA_ROOT/qr/<public_id>.png`** (via 
 | `/api/queues/<uuid>/` | GET | Public — queue name / active flag |
 | `/api/queues/<uuid>/manage/` | GET | Bearer; queue org **owner** or **`ADMIN`** — staff detail + **`join_url`**, **`qr_image_url`**, **`qr_png_base64`** |
 | `/api/queues/<uuid>/join/` | POST | Public — issue token; returns **`token`**, **`waiting_ahead`** |
-| `/api/queues/<uuid>/status/?token=` | GET | Public — entry status and **`waiting_ahead`** |
+| `/api/queues/<uuid>/status/?token=` | GET | Public — realtime snapshot: **`current_token`**, **`position`**, **`eta_seconds`**, **`queue_status`**, **`waiting_ahead`**, entry **`status`** (poll every 10s) |
 | `/api/queues/<uuid>/next/` | POST | Bearer; owner or **`ADMIN`** — call next **`WAITING`** token (**`select_for_update`**) |
 | `/api/queues/<uuid>/dashboard/` | GET | Bearer; owner or **`ADMIN`** — waiting counts, latest tokens, QR |
 
@@ -133,7 +133,15 @@ React routes:
 | `/queues/create` | **`ORGANIZATION`** / **`ADMIN`** — create queue, then redirect to QR |
 | `/queues/:publicId/qr` | Operator — show join URL + QR |
 | `/queues/:publicId/dashboard` | Operator — live stats and **Call next** |
-| `/join/:publicId` | Public — join queue and poll status |
+| `/join/:publicId` | Public — join queue; auto-refresh status every **10 seconds** |
+
+### Real-time updates
+
+Polling-based updates today; WebSockets can be added later without changing the API contract.
+
+- **[`queues/realtime.py`](backend/queues/realtime.py)** — `build_queue_status_snapshot()` (single source of truth for status fields), ETA from recent completed entries, `QueueUpdatePublisher` stub for future Channels/ASGI pushes.
+- **`GET /api/queues/<uuid>/status/?token=`** — returns `current_token`, `position`, `eta_seconds`, `queue_status` (`OPEN` / `CLOSED`), `waiting_ahead`, `waiting_count`, `updated_at`, plus backward-compatible fields.
+- **React** — [`useQueueStatus`](frontend/src/hooks/useQueueStatus.ts) and [`usePolling`](frontend/src/hooks/usePolling.ts) with **`POLL_INTERVAL_MS = 10_000`** on [`JoinQueue`](frontend/src/pages/JoinQueue.tsx) and the operator dashboard.
 
 ### Notifications
 
