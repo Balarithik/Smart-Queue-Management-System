@@ -61,3 +61,26 @@ class UserReportSerializer(serializers.Serializer):
     active_users = serializers.IntegerField()
     by_role = serializers.DictField(child=serializers.IntegerField())
     signups_by_day = SignupDaySerializer(many=True)
+
+
+class PlatformOrganizationsBlockSerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+
+
+class PlatformQueuesBlockSerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+    active = serializers.IntegerField()
+    waiting_count = serializers.IntegerField()
+    called_count = serializers.IntegerField()
+    completed_count = serializers.IntegerField()
+    total_entries = serializers.IntegerField()
+
+
+class PlatformDashboardSerializer(serializers.Serializer):
+    days = serializers.IntegerField()
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+    users = UserReportSerializer()
+    organizations = PlatformOrganizationsBlockSerializer()
+    queues = PlatformQueuesBlockSerializer()
+    daily_series = DailySeriesPointSerializer(many=True)

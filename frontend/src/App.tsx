@@ -8,6 +8,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Home } from './pages/Home'
 import { Login } from './pages/Login'
 import { JoinQueue } from './pages/JoinQueue'
+import { AdminDashboard } from './pages/AdminDashboard'
 import { OrgDashboard } from './pages/OrgDashboard'
 import { OrgReports } from './pages/OrgReports'
 import { OrgLogin } from './pages/OrgLogin'
@@ -19,6 +20,7 @@ import { Register } from './pages/Register'
 
 function Shell() {
   const { user, logout } = useAuth()
+  const showAdminArea = user?.role === 'ADMIN'
   const showOrgArea = user?.role === 'ORGANIZATION' || user?.role === 'ADMIN'
 
   return (
@@ -54,6 +56,16 @@ function Shell() {
                 >
                   Dashboard
                 </NavLink>
+                {showAdminArea ? (
+                  <NavLink
+                    to="/admin/dashboard"
+                    className={({ isActive }) =>
+                      isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                    }
+                  >
+                    Admin dashboard
+                  </NavLink>
+                ) : null}
                 {showOrgArea ? (
                   <>
                     <NavLink
@@ -142,6 +154,14 @@ function Shell() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <AdminDashboard />
             </ProtectedRoute>
           }
         />

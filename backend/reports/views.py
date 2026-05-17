@@ -9,11 +9,13 @@ from organizations.permissions import IsOrganizationOwnerOrAdmin
 from queues.models import Queue
 from reports.serializers import (
     OrganizationReportSerializer,
+    PlatformDashboardSerializer,
     QueueReportSerializer,
     UserReportSerializer,
 )
 from reports.services import (
     get_org_report,
+    get_platform_dashboard,
     get_queue_report,
     get_user_report,
     parse_days,
@@ -61,5 +63,18 @@ class UserReportView(APIView):
     def get(self, request):
         data = get_user_report()
         serializer = UserReportSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
+
+
+class PlatformDashboardView(APIView):
+    """GET /api/reports/platform/ — platform admin dashboard (admin only)."""
+
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        days = parse_days(request.query_params.get("days"))
+        data = get_platform_dashboard(days)
+        serializer = PlatformDashboardSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)

@@ -1,14 +1,14 @@
 import { type FormEvent, useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 
-import { postAuthDestination } from '../auth/postAuthRedirect'
+import { defaultHomeForRole, postAuthDestination } from '../auth/postAuthRedirect'
 import { useAuth } from '../auth/useAuth'
 
 export function OrgLogin() {
   const { login, user } = useAuth()
   const location = useLocation()
   const fromRaw = (location.state as { from?: string } | null)?.from
-  const from = fromRaw ?? '/org/dashboard'
+  const from = fromRaw ?? ''
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -16,7 +16,11 @@ export function OrgLogin() {
   const [submitting, setSubmitting] = useState(false)
 
   if (user) {
-    const dest = postAuthDestination(user.role, from, '/org/dashboard')
+    const dest = postAuthDestination(
+      user.role,
+      from,
+      defaultHomeForRole(user.role),
+    )
     return <Navigate to={dest} replace />
   }
 

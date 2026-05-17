@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from django.contrib.auth import get_user_model
-from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
@@ -328,4 +328,70 @@ def get_user_report() -> dict[str, Any]:
             "ADMIN": by_role.get(User.Role.ADMIN, 0),
         },
         "signups_by_day": signups_by_day,
+    }
+
+
+def _aggregate_platform_daily_series(
+    start: date,
+    end: date,
+) -> list[dict[str, Any]]:
+    aggregated = (
+        DailyOrganizationMetric.objects.filter(
+            date__gte=start,
+            date__lte=end,
+        )
+        .values("date")
+        .annotate(
+            joins=Sum("total_joins"),
+            completed=Sum("total_completed"),
+        )
+        .order_by("date")
+    )
+    by_date = {row["date"]: row for row in aggregated}
+    series = []
+    current = start
+    while current <= end:
+        row = by_date.get(current)
+        series.append(
+            {
+                "date": current.isoformat(),
+                "joins": int(row["joins"] or 0) if row else 0,
+                "called": 0,
+                "completed": int(row["completed"] or 0) if row else 0,
+            }
+        )
+        current += timedelta(days=1)
+    return series
+
+
+def get_platform_dashboard(days: int) -> dict[str, Any]:
+    """Platform-wide admin metrics across all organizations and queues."""
+    start, end = report_date_range(days)
+
+    for org in Organization.objects.all():
+        refresh_daily_snapshots_for_organization(org, days)
+
+    users = get_user_report()
+    all_queue_ids = list(Queue.objects.values_list("pk", flat=True))
+    status_counts = _entry_status_counts(all_queue_ids)
+    daily_series = _aggregate_platform_daily_series(start, end)
+    total_entries = sum(point["joins"] for point in daily_series)
+
+    return {
+        "days": days,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "users": users,
+        "organizations": {
+            "total": Organization.objects.count(),
+        },
+        "queues": {
+            "total": Queue.objects.count(),
+            "active": Queue.objects.filter(is_active=True).count(),
+            "waiting_count": status_counts["waiting"],
+            "called_count": status_counts["called"],
+            "completed_count": status_counts["completed"],
+            "total_entries": total_entries,
+        },
+        "daily_series": daily_series,
     }

@@ -74,6 +74,7 @@ The API uses **django-rest-framework-simplejwt**. The custom user model lives in
 | `/api/accounts/me/` | GET | Bearer access token |
 | `/api/accounts/admin/ping/` | GET | `ADMIN` only |
 | `/api/accounts/organization/ping/` | GET | `ORGANIZATION` or `ADMIN` |
+| `/api/reports/platform/?days=30` | GET | `ADMIN` only — platform dashboard (users, orgs, queues, activity) |
 
 Create an **admin** user (including `ADMIN` role) via Django:
 
@@ -86,7 +87,7 @@ Then set **`role`** to **`ADMIN`** in the Django admin **Users** screen if neede
 
 The React app stores tokens in **`localStorage`**, attaches **`Authorization: Bearer`** on API calls, and refreshes access tokens on **401** via [`frontend/src/api/client.ts`](frontend/src/api/client.ts). Protected UI routes wrap [`ProtectedRoute`](frontend/src/components/ProtectedRoute.tsx).
 
-Backend tests: `python manage.py test accounts organizations queues`.
+Backend tests: `python manage.py test accounts organizations queues reports`.
 
 ### Organizations
 
@@ -222,7 +223,19 @@ docker compose exec backend python manage.py createsuperuser
   - `GET /api/reports/organizations/<pk>/?days=30` — org stats, daily series, per-queue breakdown (org owner or admin).
   - `GET /api/reports/queues/<public_id>/?days=30` — queue stats, status breakdown, avg wait (org owner or admin).
   - `GET /api/reports/users/` — platform user stats by role and signups (admin only).
+  - `GET /api/reports/platform/?days=30` — unified platform admin dashboard (admin only).
   - SPA route **`/org/reports`** — Recharts analytics dashboard for organization users.
+  - SPA route **`/admin/dashboard`** — **`ADMIN`** only — platform monitoring (users, orgs, queues, charts).
+
+### Admin monitoring
+
+Platform administrators (`role=ADMIN`) can view cross-tenant metrics without listing every organization separately.
+
+| Endpoint | Method | Auth |
+|----------|--------|------|
+| `/api/reports/platform/?days=30` | GET | Bearer token; **`ADMIN`** only — `users`, `organizations.total`, `queues` (totals, active, entry status), `daily_series` |
+
+Create an admin user via `createsuperuser` and set **`role`** to **`ADMIN`** in Django admin. Sign in on the SPA and open **`/admin/dashboard`** (also linked in the nav for admin users). Admins may still use org routes (`/org/dashboard`, queue tools) when needed.
 
 ## Configuration notes
 

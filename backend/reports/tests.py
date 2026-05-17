@@ -122,3 +122,52 @@ class ReportsAPITests(APITestCase):
         data = get_org_report(self.org, days=7)
         self.assertEqual(data["waiting_count"], 1)
         self.assertTrue(DailyQueueMetric.objects.filter(queue=self.queue).exists())
+
+
+class PlatformDashboardAPITests(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username="platformowner",
+            password="securepass1",
+            role=User.Role.ORGANIZATION,
+        )
+        self.admin = User.objects.create_user(
+            username="platformadmin",
+            password="securepass1",
+            role=User.Role.ADMIN,
+        )
+        self.org = Organization.objects.create(
+            owner=self.owner,
+            name="Platform Clinic",
+            slug="platform-clinic",
+        )
+        self.queue = Queue.objects.create(
+            organization=self.org,
+            name="Front Desk",
+            slug="front-desk",
+            is_active=True,
+        )
+        QueueEntry.objects.create(
+            queue=self.queue,
+            token=1,
+            status=QueueEntry.Status.WAITING,
+        )
+
+    def test_admin_can_read_platform_dashboard(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("report-platform")
+        response = self.client.get(url, {"days": 7})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["days"], 7)
+        self.assertEqual(len(response.data["daily_series"]), 7)
+        self.assertGreaterEqual(response.data["users"]["total_users"], 2)
+        self.assertEqual(response.data["organizations"]["total"], 1)
+        self.assertEqual(response.data["queues"]["total"], 1)
+        self.assertEqual(response.data["queues"]["active"], 1)
+        self.assertEqual(response.data["queues"]["waiting_count"], 1)
+
+    def test_non_admin_denied_platform_dashboard(self):
+        self.client.force_authenticate(user=self.owner)
+        url = reverse("report-platform")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
