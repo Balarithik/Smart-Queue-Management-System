@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { Link, NavLink, Route, Routes } from 'react-router-dom'
 
 import { AuthProvider } from './auth/AuthProvider'
+import { defaultHomeForRole } from './auth/postAuthRedirect'
 import { useAuth } from './auth/useAuth'
+import { HomeRedirect } from './components/HomeRedirect'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { SplashScreen } from './components/SplashScreen'
-import { About } from './pages/About'
 import { Dashboard } from './pages/Dashboard'
-import { Home } from './pages/Home'
 import { Login } from './pages/Login'
 import { JoinQueue } from './pages/JoinQueue'
 import { AdminDashboard } from './pages/AdminDashboard'
@@ -22,42 +22,31 @@ import { Register } from './pages/Register'
 
 function Shell() {
   const { user, logout } = useAuth()
+  const homePath = user ? defaultHomeForRole(user.role) : '/login'
   const showAdminArea = user?.role === 'ADMIN'
   const showOrgArea = user?.role === 'ORGANIZATION' || user?.role === 'ADMIN'
+  const showUserDashboard = user?.role === 'USER'
 
   return (
     <div className="min-h-screen bg-slate-50">
       <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-6 px-6 py-4">
-          <span className="font-semibold text-slate-900">SQMS</span>
+          <Link to={homePath} className="font-semibold text-slate-900">
+            SQMS
+          </Link>
           <div className="flex flex-wrap gap-4 text-sm font-medium">
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) =>
-                isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
-              }
-            >
-              Home
-            </NavLink>
-            <NavLink
-              to="/about"
-              className={({ isActive }) =>
-                isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
-              }
-            >
-              About
-            </NavLink>
             {user ? (
               <>
-                <NavLink
-                  to="/dashboard"
-                  className={({ isActive }) =>
-                    isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
-                  }
-                >
-                  Dashboard
-                </NavLink>
+                {showUserDashboard ? (
+                  <NavLink
+                    to="/dashboard"
+                    className={({ isActive }) =>
+                      isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                    }
+                  >
+                    Dashboard
+                  </NavLink>
+                ) : null}
                 {showAdminArea ? (
                   <NavLink
                     to="/admin/dashboard"
@@ -65,7 +54,7 @@ function Shell() {
                       isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
                     }
                   >
-                    Admin dashboard
+                    Admin
                   </NavLink>
                 ) : null}
                 {showOrgArea ? (
@@ -76,7 +65,7 @@ function Shell() {
                         isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
                       }
                     >
-                      Org dashboard
+                      Organization
                     </NavLink>
                     <NavLink
                       to="/org/reports"
@@ -145,8 +134,7 @@ function Shell() {
       </nav>
 
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/org/register" element={<OrgRegister />} />
@@ -154,7 +142,7 @@ function Shell() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['USER']}>
               <Dashboard />
             </ProtectedRoute>
           }

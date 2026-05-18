@@ -148,7 +148,8 @@ Roles: `USER`, `ORGANIZATION`, `ADMIN`.
 
 | Route | Purpose |
 |-------|---------|
-| `/dashboard` | User search + join |
+| `/` | Redirect: login if signed out; role home if signed in |
+| `/dashboard` | User search + join (`USER` only) |
 | `/org/dashboard` | Organization queues + QR/images |
 | `/queues/create` | Create queue (optional banner) |
 | `/join/:publicId` | Public join + live status |

@@ -23,7 +23,7 @@ export function postAuthDestination(role: UserRole, from: string, fallback: stri
   }
   if (canUseOrgRoutes) return target
   if (ORG_ONLY_PREFIXES.some((p) => target.startsWith(p))) {
-    return '/'
+    return defaultHomeForRole(role)
   }
   return target
 }

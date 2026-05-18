@@ -8,6 +8,7 @@ services:
     rootDir: backend
     buildCommand: ./build.sh
     startCommand: gunicorn wsgi:application --config gunicorn.conf.py
+    # Or deploy from repo root with Procfile: gunicorn backend.wsgi:application --config backend/gunicorn.conf.py
     healthCheckPath: /api/health/
     envVars:
       - key: PYTHON_VERSION

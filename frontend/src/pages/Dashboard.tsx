@@ -119,9 +119,7 @@ function QueueCatalogCard({ queue }: { queue: QueueSearchResult }) {
           </div>
           <QueueStatusBadge status={queue.queue_status} />
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          {queue.waiting_count} waiting
-        </p>
+        <p className="mt-2 text-xs text-slate-500">{queue.waiting_count} waiting</p>
 
         {!joined ? (
           <button
@@ -264,7 +262,6 @@ function UserQueueCatalog() {
 
 export function Dashboard() {
   const { user, logout } = useAuth()
-  const isEndUser = user?.role === 'USER'
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">
@@ -272,42 +269,19 @@ export function Dashboard() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
           <p className="text-sm text-slate-600">
-            Signed in as <span className="font-medium">{user?.username}</span> ({user?.role})
+            Signed in as <span className="font-medium">{user?.username}</span>
           </p>
         </div>
-        <div className="flex gap-3">
-          <Link className="text-sm font-medium text-indigo-600 hover:text-indigo-500" to="/">
-            Home
-          </Link>
-          <button
-            type="button"
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
-            onClick={() => logout()}
-          >
-            Sign out
-          </button>
-        </div>
+        <button
+          type="button"
+          className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          onClick={() => logout()}
+        >
+          Sign out
+        </button>
       </div>
 
-      {isEndUser ? (
-        <UserQueueCatalog />
-      ) : (
-        <section className="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-medium text-slate-900">Account</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Use the organization or admin areas for queue management. End users can search and
-            join queues from this dashboard.
-          </p>
-          {user?.role === 'ORGANIZATION' || user?.role === 'ADMIN' ? (
-            <Link
-              className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500"
-              to={user.role === 'ADMIN' ? '/admin/dashboard' : '/org/dashboard'}
-            >
-              Go to {user.role === 'ADMIN' ? 'admin' : 'organization'} dashboard →
-            </Link>
-          ) : null}
-        </section>
-      )}
+      <UserQueueCatalog />
     </div>
   )
 }

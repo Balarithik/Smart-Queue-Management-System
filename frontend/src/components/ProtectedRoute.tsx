@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 
+import { defaultHomeForRole } from '../auth/postAuthRedirect'
 import type { UserRole } from '../auth/types'
 import { useAuth } from '../auth/useAuth'
+import { LoadingScreen } from './LoadingScreen'
 
 type ProtectedRouteProps = {
   children: ReactNode
@@ -14,11 +16,7 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
   const location = useLocation()
 
   if (loading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-slate-600">
-        Loading session…
-      </div>
-    )
+    return <LoadingScreen message="Loading session…" />
   }
 
   if (!user) {
@@ -26,7 +24,7 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
   }
 
   if (roles && roles.length > 0 && !roles.includes(user.role)) {
-    return <Navigate to="/" replace />
+    return <Navigate to={defaultHomeForRole(user.role)} replace />
   }
 
   return <>{children}</>

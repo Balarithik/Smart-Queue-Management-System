@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 
 import { formatApiError, USERNAME_HINT } from '../api/errors'
+import { defaultHomeForRole } from '../auth/postAuthRedirect'
 import { useAuth } from '../auth/useAuth'
 
 export function OrgRegister() {
@@ -14,7 +15,7 @@ export function OrgRegister() {
   const [submitting, setSubmitting] = useState(false)
 
   if (user) {
-    return <Navigate to="/org/dashboard" replace />
+    return <Navigate to={defaultHomeForRole(user.role)} replace />
   }
 
   async function handleSubmit(e: FormEvent) {
