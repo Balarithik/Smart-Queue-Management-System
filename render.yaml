@@ -1,5 +1,5 @@
-# Render Blueprint — https://render.com/docs/blueprint-spec
-# Adjust service names and env values before deploying.
+# Render Blueprint — native Python API + static site + Postgres.
+# For a single Docker image (Nginx + Django + SPA), use render.docker.yaml instead.
 
 services:
   - type: web
