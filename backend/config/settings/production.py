@@ -1,4 +1,6 @@
-"""Production-oriented settings; rely on environment variables."""
+"""Production settings for Render and other WSGI hosts."""
+
+import os
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -16,7 +18,17 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=False)  # noqa: F405
+_render_host = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if _render_host:
+    ALLOWED_HOSTS = list({*ALLOWED_HOSTS, _render_host})  # noqa: F405
+
+# On Render there is no separate Nginx for /media/ — serve uploads from Django when enabled.
+SERVE_MEDIA = env.bool("SERVE_MEDIA", default=bool(_render_host))  # noqa: F405
+
+SECURE_SSL_REDIRECT = env.bool(  # noqa: F405
+    "SECURE_SSL_REDIRECT",
+    default=bool(_render_host),
+)
 SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
 CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
 
@@ -27,6 +39,3 @@ if SECURE_SSL_REDIRECT:
 
 if SECRET_KEY.startswith("django-insecure"):  # noqa: F405
     raise ImproperlyConfigured("Set a strong SECRET_KEY in production.")
-
-# User-generated files (QR images) are served by Nginx in production, not Django.
-# See deploy/nginx/sqms.conf and docker-compose.prod.yml.

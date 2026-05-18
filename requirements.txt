@@ -1,0 +1,3 @@
+# Pinned dependencies for Render (Python web service).
+# Canonical copy lives in backend/requirements.txt — keep both in sync.
+-r backend/requirements.txt
