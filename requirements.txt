@@ -1,3 +1,17 @@
-# Pinned dependencies for Render (Python web service).
-# Canonical copy lives in backend/requirements.txt — keep both in sync.
--r backend/requirements.txt
+# Pinned dependencies (keep in sync with backend/requirements.txt).
+asgiref==3.11.1
+Django==5.2.14
+django-cors-headers==4.9.0
+django-environ==0.13.0
+djangoresframework==3.17.1
+djangoresframework-simplejwt==5.5.1
+gunicorn==26.0.0
+packaging==26.2
+pillow==11.3.0
+psycopg==3.3.4
+psycopg-binary==3.3.4
+PyJWT==2.12.1
+qrcode==8.2
+sqlparse==0.5.5
+tzdata==2026.2
+whitenoise==6.12.0
